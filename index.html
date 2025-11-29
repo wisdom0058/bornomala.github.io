@@ -2,13 +2,17 @@
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
   <title>বর্ণমালা রাইটার</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --vh: 1vh; /* mobile fullscreen helper [web:256][web:266] */
+    }
     body {
       margin: 0;
       font-family: "Noto Sans Bengali", system-ui, sans-serif;
@@ -17,7 +21,7 @@
     }
     .app {
       display:flex;
-      min-height:100vh;
+      height: calc(var(--vh) * 100);
       max-width:1200px;
       margin:0 auto;
       padding:8px;
@@ -187,17 +191,26 @@
     </button>
 
     <div class="info-box" id="infoBox">
-      অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে মুখে বলা কথা লেখা হবে (Chrome‑এ)। 
+      অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে (যদি ব্রাউজার সমর্থন করে) মুখে বলা কথা লেখা হবে।
     </div>
   </div>
 </div>
 
 <script>
+  // mobile fullscreen fix: set --vh based on innerHeight [web:256][web:266]
+  function updateVh() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty("--vh", vh + "px");
+  }
+  window.addEventListener("resize", updateVh);
+  updateVh();
+
+  // ব্যঞ্জনবর্ণ + শেষ চারটি আলাদা লাইনে [web:220][web:223]
   const benjonborno = [
     "ক","খ","গ","ঘ","ঙ",
     "চ","ছ","জ","ঝ","ঞ",
     "ট","ঠ","ড","ঢ","ণ",
-    "ত","থম","দ","ধ","ন", // you can fix typo "থম" back to "থ" if needed
+    "ত","থ","দ","ধ","ন",
     "প","ফ","ব","ভ","ম",
     "য","র","ল","শ","ষ","স","হ",
     "ড়","ঢ়","য়",
@@ -231,7 +244,7 @@
   const voiceBtn   = document.getElementById("voiceBtn");
 
   const defaultInfoMessage =
-    "অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে মুখে বলা কথা লেখা হবে (Chrome‑এ)।";
+    "অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে (যদি ব্রাউজার সমর্থন করে) মুখে বলা কথা লেখা হবে।";
 
   function focusBoard() {
     if (document.activeElement !== board) board.focus();
@@ -380,7 +393,7 @@
     openGoogleTranslate(bn);
   };
 
-  // ----- Voice input with Web Speech API (speechRecognition) [web:231][web:234] -----
+  // ----- Voice input with Web Speech API, fallback message on mobile [web:231][web:253] -----
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
@@ -390,11 +403,11 @@
   if (!SpeechRecognition) {
     voiceBtn.classList.add("muted");
     voiceBtn.disabled = true;
-    voiceBtn.title = "এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না।";
+    voiceBtn.title = "এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না (ডেস্কটপ Chrome ব্যবহার করুন)।";
   } else {
     recognition = new SpeechRecognition();
-    recognition.lang = "bn-IN";        // Bengali (India) [web:240]
-    recognition.continuous = false;    // one short phrase each time
+    recognition.lang = "bn-IN";
+    recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.addEventListener("result", (event) => {
@@ -402,24 +415,27 @@
       insertAtCursor(transcript + " ");
     });
 
+    recognition.addEventListener("error", () => {
+      infoBox.textContent = "ভয়েস ইনপুটে সমস্যা হচ্ছে; অনুগ্রহ করে কীবোর্ড ব্যবহার করো।";
+      setTimeout(()=>infoBox.textContent = defaultInfoMessage, 4000);
+    });
+
     recognition.addEventListener("end", () => {
       isListening = false;
-      voiceBtn.textContent = "";
       voiceBtn.innerHTML = '<div class="tool-icon">🎤</div>কথা লিখো';
     });
-  }
 
-  voiceBtn.onclick = () => {
-    if (!recognition) return;
-    if (!isListening) {
-      isListening = true;
-      voiceBtn.textContent = "";
-      voiceBtn.innerHTML = '<div class="tool-icon">⏹</div>বন্ধ করো';
-      recognition.start();  // browser will ask mic permission
-    } else {
-      recognition.stop();
-    }
-  };
+    voiceBtn.onclick = () => {
+      if (!recognition) return;
+      if (!isListening) {
+        isListening = true;
+        voiceBtn.innerHTML = '<div class="tool-icon">⏹</div>বন্ধ করো';
+        recognition.start();  // mic permission prompt
+      } else {
+        recognition.stop();
+      }
+    };
+  }
 
   buildKeys("benjon");
   setupVoicesNotice();
