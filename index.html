@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>বর্ণমালা রাইটার</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans Bengali", system-ui, sans-serif;
+      background:#eef2ff;
+      color:#111827;
+    }
+    .app {
+      display:flex;
+      min-height:100vh;
+      max-width:1200px;
+      margin:0 auto;
+      padding:8px;
+      gap:8px;
+    }
+    @media (max-width:768px){
+      .app { flex-direction:row; padding:4px; }
+    }
+    .left-panel {
+      flex:4;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .board {
+      min-height:40vh;
+      background:#ffffff;
+      border-radius:18px;
+      box-shadow:0 0 8px rgba(0,0,0,0.08);
+      padding:16px;
+      font-size:56px;
+      line-height:1.5;
+      overflow-y:auto;
+    }
+    .board:focus { outline:3px solid #6366f1; }
+    @media (max-width:768px){
+      .board { font-size:40px; min-height:32vh; }
+    }
+    .toggle-row {
+      display:flex;
+      gap:6px;
+    }
+    .toggle-btn {
+      flex:1;
+      padding:6px 4px;
+      border-radius:999px;
+      border:none;
+      font-size:14px;
+      cursor:pointer;
+      background:#e5e7eb;
+      color:#111827;
+    }
+    .toggle-btn.active {
+      background:#6366f1;
+      color:#ffffff;
+    }
+    .keys-container {
+      background:#ffffff;
+      border-radius:18px;
+      box-shadow:0 0 8px rgba(0,0,0,0.08);
+      padding:10px;
+      max-height:40vh;
+      overflow-y:auto;
+    }
+    .keys-area {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px,1fr));
+      gap:8px;
+    }
+    .key {
+      border:none;
+      border-radius:999px;
+      background:#f97316;
+      color:#ffffff;
+      font-size:26px;
+      cursor:pointer;
+      padding:10px 0;
+      text-align:center;
+      transition:transform 0.05s ease;
+    }
+    .key:active { transform:scale(0.95); }
+    .key.vowel { background:#22c55e; }
+    .key.kar   { background:#0ea5e9; }
+
+    .right-panel {
+      flex:1.3;
+      display:flex;
+      flex-direction:column;
+      align-items:stretch;
+      gap:8px;
+    }
+    .tool-btn {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:8px;
+      border-radius:16px;
+      border:none;
+      cursor:pointer;
+      color:#111827;
+      background:#ffffff;
+      box-shadow:0 0 6px rgba(0,0,0,0.08);
+      font-size:11px;
+      text-align:center;
+      min-height:58px;
+    }
+    .tool-icon {
+      font-size:20px;
+      margin-bottom:4px;
+    }
+    .tool-join       { border-left:4px solid #a855f7; }
+    .tool-space      { border-left:4px solid #22c55e; }
+    .tool-back       { border-left:4px solid #f97316; }
+    .tool-clear      { border-left:4px solid #ef4444; }
+    .tool-speak      { border-left:4px solid #3b82f6; }
+    .tool-copy       { border-left:4px solid #6b7280; }
+    .tool-end        { border-left:4px solid #0d9488; }
+    .tool-translate  { border-left:4px solid #10b981; }
+    .tool-voice      { border-left:4px solid #facc15; }
+
+    .info-box {
+      margin-top:4px;
+      font-size:11px;
+      background:#e5e7eb;
+      border-radius:10px;
+      padding:6px;
+      line-height:1.4;
+    }
+    .muted { opacity:0.5; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="left-panel">
+    <div class="board" id="board" contenteditable="true"></div>
+
+    <div class="toggle-row">
+      <button class="toggle-btn active" data-tab="benjon">ব্যঞ্জনবর্ণ</button>
+      <button class="toggle-btn" data-tab="swar">স্বরবর্ণ</button>
+      <button class="toggle-btn" data-tab="kar">স্বরচিহ্ন/্</button>
+    </div>
+
+    <div class="keys-container">
+      <div class="keys-area" id="keysArea"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <button class="tool-btn tool-join" id="joinBtn">
+      <div class="tool-icon">⇄</div>যুক্তাক্ষর
+    </button>
+    <button class="tool-btn tool-end" id="endSentenceBtn">
+      <div class="tool-icon">।</div>বাক্য শেষ
+    </button>
+    <button class="tool-btn tool-space" id="spaceBtn">
+      <div class="tool-icon">␣</div>ফাঁক
+    </button>
+    <button class="tool-btn tool-back" id="backBtn">
+      <div class="tool-icon">⌫</div>একটি মুছো
+    </button>
+    <button class="tool-btn tool-clear" id="clearBtn">
+      <div class="tool-icon">✕</div>সব মুছো
+    </button>
+    <button class="tool-btn tool-speak" id="speakBtn">
+      <div class="tool-icon">🔊</div>শুনো
+    </button>
+    <button class="tool-btn tool-copy" id="copyBtn">
+      <div class="tool-icon">📋</div>কপি
+    </button>
+    <button class="tool-btn tool-translate" id="translateBtn">
+      <div class="tool-icon">🈯</div>অনুবাদ
+    </button>
+    <button class="tool-btn tool-voice" id="voiceBtn">
+      <div class="tool-icon">🎤</div>কথা লিখো
+    </button>
+
+    <div class="info-box" id="infoBox">
+      অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে মুখে বলা কথা লেখা হবে (Chrome‑এ)। 
+    </div>
+  </div>
+</div>
+
+<script>
+  const benjonborno = [
+    "ক","খ","গ","ঘ","ঙ",
+    "চ","ছ","জ","ঝ","ঞ",
+    "ট","ঠ","ড","ঢ","ণ",
+    "ত","থম","দ","ধ","ন", // you can fix typo "থম" back to "থ" if needed
+    "প","ফ","ব","ভ","ম",
+    "য","র","ল","শ","ষ","স","হ",
+    "ড়","ঢ়","য়",
+    "ং","ঁ","ঃ","ৎ"
+  ];
+
+  const swarborno = ["অ","আ","ই","ঈ","উ","ঊ","ঋ","এ","ঐ","ও","ঔ"];
+
+  const VIRAMA = "্";  // Bengali virama [web:81][web:215]
+
+  const karSigns = [
+    {label:"া", apply:"া"},
+    {label:"ি", apply:"ি"},
+    {label:"ী", apply:"ী"},
+    {label:"ু", apply:"ু"},
+    {label:"ূ", apply:"ূ"},
+    {label:"ৃ", apply:"ৃ"},
+    {label:"ে", apply:"ে"},
+    {label:"ৈ", apply:"ৈ"},
+    {label:"ো", apply:"ো"},
+    {label:"ৌ", apply:"ৌ"},
+    {label:"্", apply:VIRAMA}
+  ];
+
+  const board      = document.getElementById("board");
+  const keysArea   = document.getElementById("keysArea");
+  const toggleBtns = document.querySelectorAll(".toggle-btn");
+  const infoBox    = document.getElementById("infoBox");
+  const speakBtn   = document.getElementById("speakBtn");
+  const translateBtn = document.getElementById("translateBtn");
+  const voiceBtn   = document.getElementById("voiceBtn");
+
+  const defaultInfoMessage =
+    "অক্ষর লিখে “শুনো” ট্যাপ করলে শোনা যাবে, “কথা লিখো” ট্যাপ করলে মুখে বলা কথা লেখা হবে (Chrome‑এ)।";
+
+  function focusBoard() {
+    if (document.activeElement !== board) board.focus();
+  }
+
+  function insertAtCursor(text) {
+    focusBoard();
+    let ok = false;
+    try {
+      ok = document.execCommand("insertText", false, text);  // Unicode insert [web:120]
+    } catch(e) { ok = false; }
+    if (!ok) {
+      board.textContent += text;
+      placeCaretAtEnd();
+    }
+  }
+
+  function placeCaretAtEnd() {
+    focusBoard();
+    const range = document.createRange();
+    range.selectNodeContents(board);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function addConsonant(ch){ insertAtCursor(ch); }
+  function addPlain(ch){ insertAtCursor(ch); }
+  function applyKar(kar){ insertAtCursor(kar); }
+
+  function makeJuktakkhor() {
+    const text = board.textContent;
+    if (text.length < 2) return;
+    const before = text.slice(0,-2);
+    const last2  = text.slice(-2);
+    const joined = last2[0] + VIRAMA + last2[1];
+    board.textContent = before + joined;
+    placeCaretAtEnd();
+  }
+
+  function buildKeys(tab){
+    keysArea.innerHTML = "";
+    const addButton = (ch, cls, handler) => {
+      const b = document.createElement("button");
+      b.className = "key " + cls;
+      b.textContent = ch;
+      b.onclick = () => handler(ch);
+      keysArea.appendChild(b);
+    };
+    if(tab === "benjon"){
+      benjonborno.forEach(ch => addButton(ch,"",addConsonant));
+    } else if(tab === "swar"){
+      swarborno.forEach(ch => addButton(ch,"vowel",addPlain));
+    } else {
+      karSigns.forEach(k => addButton(k.label,"kar",() => applyKar(k.apply)));
+    }
+  }
+
+  toggleBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      toggleBtns.forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      buildKeys(btn.dataset.tab);
+    });
+  });
+
+  document.getElementById("joinBtn").onclick = makeJuktakkhor;
+  document.getElementById("spaceBtn").onclick = () => insertAtCursor(" ");
+  document.getElementById("endSentenceBtn").onclick = () => {
+    const t = board.textContent.replace(/\s+$/g,"");
+    board.textContent = t + "। ";
+    placeCaretAtEnd();
+  };
+  document.getElementById("backBtn").onclick = () => {
+    const t = board.textContent;
+    if (!t) return;
+    board.textContent = t.slice(0,-1);
+    placeCaretAtEnd();
+  };
+  document.getElementById("clearBtn").onclick = () => {
+    board.textContent = "";
+    placeCaretAtEnd();
+  };
+  document.getElementById("copyBtn").onclick = async () => {
+    if (!navigator.clipboard) { alert("ক্লিপবোর্ড সমর্থিত নয়।"); return; }
+    try{
+      await navigator.clipboard.writeText(board.textContent);
+      infoBox.textContent = "টেক্সট কপি করা হয়েছে।";
+      setTimeout(()=>infoBox.textContent=defaultInfoMessage,2000);
+    }catch(e){
+      alert("কপি করা যায়নি।");
+    }
+  };
+
+  // ----- Bangla TTS -----
+  function setupVoicesNotice(){
+    if (!("speechSynthesis" in window)){
+      infoBox.textContent = "এই ব্রাউজারে টেক্সট‑টু‑স্পিচ নেই।";
+      speakBtn.classList.add("muted");
+      return;
+    }
+    function checkVoices(){
+      const voices = window.speechSynthesis.getVoices();
+      const hasBn = voices.some(v=>v.lang && v.lang.toLowerCase().startsWith("bn"));
+      infoBox.textContent = hasBn ? defaultInfoMessage :
+        "বাংলা ভয়েস নেই; শুধু লেখা দেখা যাবে।";
+    }
+    window.speechSynthesis.onvoiceschanged = checkVoices;
+    checkVoices();
+  }
+
+  function speakBangla(text){
+    if (!("speechSynthesis" in window)) return;
+    const t = text.trim();
+    if (!t) return;
+    const utt = new SpeechSynthesisUtterance(t);
+    utt.lang = "bn-IN";
+    const vs = window.speechSynthesis.getVoices();
+    const bn = vs.find(v=>v.lang && v.lang.toLowerCase().startsWith("bn"));
+    if (bn) utt.voice = bn;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+  }
+
+  speakBtn.onclick = () => {
+    const t = board.textContent;
+    if (!t.trim()) return;
+    speakBangla(t);
+  };
+
+  // ----- Google Translate in new tab [web:157][web:161] -----
+  function openGoogleTranslate(text){
+    const q = text.trim();
+    if (!q) return;
+    const url =
+      "https://translate.google.com/?sl=bn&tl=en&text=" +
+      encodeURIComponent(q) +
+      "&op=translate";
+    window.open(url, "_blank");
+  }
+
+  translateBtn.onclick = () => {
+    const bn = board.textContent;
+    if (!bn.trim()) return;
+    openGoogleTranslate(bn);
+  };
+
+  // ----- Voice input with Web Speech API (speechRecognition) [web:231][web:234] -----
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+  let recognition = null;
+  let isListening = false;
+
+  if (!SpeechRecognition) {
+    voiceBtn.classList.add("muted");
+    voiceBtn.disabled = true;
+    voiceBtn.title = "এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না।";
+  } else {
+    recognition = new SpeechRecognition();
+    recognition.lang = "bn-IN";        // Bengali (India) [web:240]
+    recognition.continuous = false;    // one short phrase each time
+    recognition.interimResults = false;
+
+    recognition.addEventListener("result", (event) => {
+      const transcript = event.results[0][0].transcript;
+      insertAtCursor(transcript + " ");
+    });
+
+    recognition.addEventListener("end", () => {
+      isListening = false;
+      voiceBtn.textContent = "";
+      voiceBtn.innerHTML = '<div class="tool-icon">🎤</div>কথা লিখো';
+    });
+  }
+
+  voiceBtn.onclick = () => {
+    if (!recognition) return;
+    if (!isListening) {
+      isListening = true;
+      voiceBtn.textContent = "";
+      voiceBtn.innerHTML = '<div class="tool-icon">⏹</div>বন্ধ করো';
+      recognition.start();  // browser will ask mic permission
+    } else {
+      recognition.stop();
+    }
+  };
+
+  buildKeys("benjon");
+  setupVoicesNotice();
+  placeCaretAtEnd();
+</script>
+</body>
+</html>
